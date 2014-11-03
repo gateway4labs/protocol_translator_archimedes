@@ -8,30 +8,32 @@ from flask_sockets import Sockets
 app = Flask(__name__)
 sockets = Sockets(app)
 
-redis_client = redis.Redis()
+import archimedes_devices.status as status
 
 @sockets.route('/devices/sensors')
 def echo_socket(ws):
     arguments = urlparse.parse_qs(ws.environ['QUERY_STRING'])
     # { 'reservation_id' : ['foo'] }
     reservation_ids = arguments.get('reservation_id', [])
-    if reservation_ids:
+    sensor_ids = arguments.get('sensor_id', [])
+    lab_ids = arguments.get('lab_id', [])
+
+    if reservation_ids and sensor_ids and lab_ids:
         reservation_id = reservation_ids[0]
+        sensor_id = sensor_ids[0]
+        lab_id = lab_ids[0]
     else:
-        ws.send("ERROR: Reservation missing identifier")
+        ws.send("ERROR: fields missing (check reservation_id, sensor_id and lab_id)")
         ws.close()
         return
-    
-    # 
-    # Now we should:
-    # 1. Add this reservation_id to redis
-    # 2. While the reservation_id is in Redis (otherwise other process has removed it), take the results
-    #    and convert them to the desired format (e.g., one for archimedes)
-    # 
-    
-    while True:
-        time.sleep(1)
+
+    status.new_reservation(reservation_id)
+
+    previous_data = {}
+    for new_data in status.get_notifications():
         ws.send("Sensor data for %s: %s" % (reservation_id, time.asctime()))
+
+    ws.close()
 
 @app.route('/')
 def hello():

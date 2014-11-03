@@ -8,6 +8,7 @@ redis_client = redis.Redis()
 
 
 RESERVATION_PREFIX = 'lab_reservations_'
+CHANNEL_PREFIX = 'channel'
 COMMAND = 'command'
 BASE_URL = 'url'
 
@@ -17,7 +18,6 @@ def new_reservation(reservation_id, command):
 
 def get_reservations():
     reservation_ids = redis_client.keys('%s*' % RESERVATION_PREFIX)
-    print reservation_ids
     commands = {}
     for long_reservation_id in reservation_ids:
         reservation_id = long_reservation_id.split('lab_reservations_')[1]
@@ -30,8 +30,36 @@ def get_reservations():
             }
     return commands
 
+def notify(message, reservation_id):
+    redis_client.publish('_'.join(CHANNEL_PREFIX, reservation_id), message)
+
+REMOVAL = 'REMOVAL'
+
+class PubSubWrapper(object):
+    def __init__(self, pubsub, channels):
+        self.pubsub = pubsub
+        self.pubsub.subscribe(channels)
+
+    def iterate(self):
+        for item in self.pubsub.listen():
+            if item == REMOVAL:
+                break
+            yield item
+
+        self.close()
+
+    def close(self):
+        self.pubsub.unsubscribe()
+
+def get_notifications(reservation_id):
+    pubsub = redis_client.pubsub()
+    channel = '_'.join(CHANNEL_PREFIX, reservation_id)
+    return PubSubWrapper([channel])
+
 def remove_reservation(reservation_id):
     redis_client.hdel(''.join((RESERVATION_PREFIX, reservation_id)), COMMAND)
     redis_client.hdel(''.join((RESERVATION_PREFIX, reservation_id)), BASE_URL)
+    channel = '_'.join(CHANNEL_PREFIX, reservation_id)
+    redis_client.publish(channel, REMOVAL)
 
 

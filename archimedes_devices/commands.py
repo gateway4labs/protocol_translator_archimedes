@@ -9,10 +9,8 @@ import archimedes_devices.status as status
 
 manager = Manager(app)
 
-import redis
-
 @manager.command
-def update_status():
+def update_status(fake = False):
     reservations = status.get_reservations()
     print "Reservations: %s" % reservations
     for reservation_id in reservations:
@@ -29,7 +27,13 @@ def update_status():
         cookies = {
             'weblabsessionid' : reservation_id.split('-')[-1]
         }
-        response = requests.post('%sjson/' % base_url, data = request, cookies = cookies).json()
+        if fake:
+            import random
+            response = { 'result' : { 'commandstring' : {"archimedes1": {"load": str(random.randint(0,100)), "level": "18.1"}, "archimedes2": {"load": "41.0", "level": "18.9"}, "archimedes3": {"load": "3.04", "level": "18.4"}, "archimedes4": {"load": "31.07", "level": "18.5"}, "archimedes5": {"load": "620.01", "level": "11.4"}, "archimedes6": {"load": "89.59", "level": "18.4"}, "archimedes7": {"load": "43.59", "level": "16.7"}} }, 'is_exception' : False }
+            response = { 'result' : { 'commandstring' : {"archimedes1": {"load": "41.07", "level": "18.1"}, "archimedes2": {"load": "41.0", "level": "18.9"}, "archimedes3": {"load": "3.04", "level": "18.4"}, "archimedes4": {"load": "31.07", "level": "18.5"}, "archimedes5": {"load": "620.01", "level": "11.4"}, "archimedes6": {"load": "89.59", "level": "18.4"}, "archimedes7": {"load": "43.59", "level": "16.7"}} }, 'is_exception' : False }
+        else:
+            response = requests.post('%sjson/' % base_url, data = request, cookies = cookies).json()
+
         if response.get('is_exception', True):
             print "Removing..."
             status.remove_reservation(reservation_id)
