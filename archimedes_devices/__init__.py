@@ -33,8 +33,6 @@ def echo_socket(ws):
         time.sleep(1)
         ws.send("Sensor data for %s: %s" % (reservation_id, time.asctime()))
 
-print "hola"
-
 @app.route('/')
 def hello():
     return 'Hello World!'
