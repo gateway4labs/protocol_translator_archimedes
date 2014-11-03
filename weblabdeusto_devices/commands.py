@@ -3,8 +3,8 @@ import json
 import requests
 
 from flask.ext.script import Manager
-from archimedes_devices import app
-import archimedes_devices.status as status
+from weblabdeusto_devices import app
+import weblabdeusto_devices.status as status
 
 
 manager = Manager(app)
@@ -34,13 +34,14 @@ def update_status(fake = False):
         else:
             response = requests.post('%sjson/' % base_url, data = request, cookies = cookies).json()
 
+        result = response.get('result', {}).get('commandstring')
         if response.get('is_exception', True):
             print "Removing..."
             status.remove_reservation(reservation_id)
-        print 
-        print reservation_id
-        print request
-        print response
+        else:
+            print reservation_id
+            print result
+            status.notify(result, reservation_id)
         # Obtain from redis the current reservations
         # one by one, do the following:
         # a) run the required command

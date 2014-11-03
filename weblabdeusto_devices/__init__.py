@@ -8,7 +8,8 @@ from flask_sockets import Sockets
 app = Flask(__name__)
 sockets = Sockets(app)
 
-import archimedes_devices.status as status
+import weblabdeusto_devices.status as status
+from weblabdeusto_devices.ext import LABS
 
 @sockets.route('/devices/sensors')
 def echo_socket(ws):
@@ -27,10 +28,15 @@ def echo_socket(ws):
         ws.close()
         return
 
-    status.new_reservation(reservation_id)
+    if lab_id not in LABS:
+        ws.send("ERROR: invalid lab (not found in list)")
+        ws.close()
+        return
+
+    status.new_reservation(reservation_id, LABS[lab_id])
 
     previous_data = {}
-    for new_data in status.get_notifications():
+    for new_data in status.get_notifications(reservation_id):
         ws.send("Sensor data for %s: %s" % (reservation_id, time.asctime()))
 
     ws.close()

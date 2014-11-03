@@ -11,8 +11,17 @@ Will internally do:
 We use the flask.exthook to do this.
 """
 
+LABS = {
+}
+
+def register(name, lab):
+    LABS[name] = lab
+
+
 import archimedes
 assert archimedes is not None # pyflakes warning
+
+register('archimedes', archimedes)
 
 def setup():
     from flask.exthook import ExtensionImporter
@@ -21,3 +30,4 @@ def setup():
 
 setup()
 del setup
+
