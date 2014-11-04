@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en" ng-app="weblabDevices">
+<head>
+    <meta charset="utf-8">
+    <title>Testing tool</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.0/css/bootstrap.min.css">
+
+</head>
+<body id="body" ng-controller="WebLabListCtrl">
+    <div class="container">
+        <div class="jumbotron"> 
+            <div class="text-center">
+                <h1>Testing tool</h1>
+                <h2>Try the WebLab-Deusto protocol translator</h2>
+            </div>
+        </div>
+
+        <div class="row">
+            <h2>Reservation identifier</h2>
+            <p>WebLab-Deusto uses a reservation identifier. You need one of these. If running in the fake mode, this is not required, so you can type here whatever:</p>
+            <select id="lab_id">
+                <option value="archimedes" selected>archimedes</option>
+                <!-- other labs -->
+            </select>
+            <input type="text" id="reservation_id_text" value="asdfasdf.route1"></input><button id="activateWebSocket" class="btn btn-default">Connect</button>
+        </div>
+
+        <div class="row" id="metadata_row">
+            <h2>Metadata</h2>
+            <p>This button calls the <tt>getSensorMetadata</tt>, displays it and processes it.</p>
+            <a href="#" class="btn btn-primary" id="getSensorMetadata">getSensorMetadata</a>
+            
+            <ul>
+                <li ng-repeat="sensor in sensors">
+                    <span>{{ sensor.fullName }}</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+    <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.2.26/angular.min.js"></script>
+    <script>
+        var weblabDevices = angular.module('weblabDevices', []);
+        weblabDevices.controller('WebLabListCtrl', function ($scope) {
+          $scope.sensors = [];
+        });
+
+        var websocket; 
+
+        function onMessage(evt) {
+            var jsonResponse = JSON.parse(evt.data);
+            console.log(jsonResponse);
+            if (jsonResponse['error'] == true) {
+                alert(jsonResponse['message']);
+            } else if (jsonResponse['method'] == 'getSensorMetadata') {
+                processSensorMetadata(jsonResponse);
+            } else {
+                alert("Invalid response: " + evt.data);
+            }
+        }
+        
+        $("#metadata_row").hide();
+
+        $("#activateWebSocket").click(function() {
+            var reservation_id = $("#reservation_id_text").val();
+            console.log(reservation_id);   
+            var lab_id = $("#lab_id").val();
+            console.log(lab_id);
+            websocket = new WebSocket('ws://' + location.host + '/devices/sensors?reservation_id=' + reservation_id + "&lab_id=" + lab_id);
+            websocket.onmessage = onMessage;
+            $("#metadata_row").show();
+        });
+
+        $("#getSensorMetadata").click(function() {
+            websocket.send(JSON.stringify({ 
+                "method" : "getSensorMetadata"
+            }));
+        });
+
+        function processSensorMetadata(response) {
+            var scope = angular.element($("#body")).scope();
+            scope.$apply(function(scope){
+                scope.sensors = [];
+                $(response.sensors).each(function (pos, value) {
+                    scope.sensors.push( {
+                        'sensorId' : value.sensorId,
+                        'description' : value.description,
+                        'fullName' : value.fullName
+                    });
+                });
+            });
+        }
+    </script>
+</body>
+</html>
