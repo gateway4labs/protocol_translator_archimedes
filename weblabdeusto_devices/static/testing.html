@@ -25,16 +25,41 @@
             <input type="text" id="reservation_id_text" value="asdfasdf.route1"></input><button id="activateWebSocket" class="btn btn-default">Connect</button>
         </div>
 
-        <div class="row" id="metadata_row">
+        <div class="row" id="metadata_row" style="display: none">
             <h2>Metadata</h2>
             <p>This button calls the <tt>getSensorMetadata</tt>, displays it and processes it.</p>
             <a href="#" class="btn btn-primary" id="getSensorMetadata">getSensorMetadata</a>
+            <br>
+            <br>
+            <textarea id="getSensorMetadataResponse" style="display: none; width: 100%; height: 300px">
+            </textarea>
+            <br>
+            <table id="sensorsTable" style="display: none" class="table table-hover table-bordered">
+                <thead>
+                    <tr>
+                        <th>sensorId</th>
+                        <th>Full name</th>
+                        <th>Sensors</th>
+                        <th>Description</th>
+                        <th>Run</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="sensor in sensors">
+                        <td>{{ sensor.sensorId }}</td>
+                        <td>{{ sensor.fullName }}</td>
+                        <td>{{ sensor.sensorNames }}</td>
+                        <td>{{ sensor.description }}</td>
+                        <td><button class="btn btn-primary" ng-click="processSensor(sensor)"><span class="glyphicon glyphicon-play"></span></button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="row" id="sensor_row" style="display: none">
+            <h2>Sensor {{ sensorName }}</h2>
+
             
-            <ul>
-                <li ng-repeat="sensor in sensors">
-                    <span>{{ sensor.fullName }}</span>
-                </li>
-            </ul>
         </div>
     </div>
 
@@ -44,6 +69,20 @@
         var weblabDevices = angular.module('weblabDevices', []);
         weblabDevices.controller('WebLabListCtrl', function ($scope) {
           $scope.sensors = [];
+          $scope.sensorName = "";
+          $scope.processSensor = processSensor;
+
+          function processSensor(sensor) {
+                $("#sensor_row").show();
+                $scope.sensorName = sensor.fullName;
+                websocket.send(JSON.stringify({
+                        "method" : "getSensorData",
+                        "sensorId" : sensor.sensorId,
+                        "configuration" : [],
+                        "accessRole" : "controller"
+                    }));
+          }
+
         });
 
         var websocket; 
@@ -60,14 +99,13 @@
             }
         }
         
-        $("#metadata_row").hide();
-
         $("#activateWebSocket").click(function() {
             var reservation_id = $("#reservation_id_text").val();
             console.log(reservation_id);   
             var lab_id = $("#lab_id").val();
             console.log(lab_id);
-            websocket = new WebSocket('ws://' + location.host + '/devices/sensors?reservation_id=' + reservation_id + "&lab_id=" + lab_id);
+            var url_prefix = location.pathname.split("/static")[0];
+            websocket = new WebSocket('ws://' + location.host + url_prefix + '/devices/sensors?reservation_id=' + reservation_id + "&lab_id=" + lab_id);
             websocket.onmessage = onMessage;
             $("#metadata_row").show();
         });
@@ -83,14 +121,25 @@
             scope.$apply(function(scope){
                 scope.sensors = [];
                 $(response.sensors).each(function (pos, value) {
-                    scope.sensors.push( {
+                    var name = "";
+                    $(value.values).each(function(pos, value) {
+                        name += value.name + ", ";
+                    });
+                    var obj = {
                         'sensorId' : value.sensorId,
                         'description' : value.description,
-                        'fullName' : value.fullName
-                    });
+                        'fullName' : value.fullName,
+                        'sensorNames' : name,
+                        'sensors' : value.values
+                    };
+                    scope.sensors.push(obj);
                 });
             });
+            $("#sensorsTable").show();
+            $("#getSensorMetadataResponse").html(JSON.stringify(response, null, 4));
+            $("#getSensorMetadataResponse").show();
         }
+
     </script>
 </body>
 </html>
