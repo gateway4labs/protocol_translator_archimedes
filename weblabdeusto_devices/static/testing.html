@@ -57,9 +57,26 @@
         </div>
 
         <div class="row" id="sensor_row" style="display: none">
-            <h2>Sensor {{ sensorName }}</h2>
+            <h2>Sensor {{ currentSensor.fullName }}</h2>
 
-            
+             <table id="sensorsDataTable" class="table table-hover table-bordered">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Unit</th>
+                        <th>Value</th>
+                        <th>When</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="value in currentSensor.values">
+                        <td>{{ value.name }}</td>
+                        <td>{{ value.unit }}</td>
+                        <td>{{ currentValues[value.name].value || 'Not available yet' }}</td>
+                        <td>{{ currentValues[value.name].timestamp || 'Not available yet' }}</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
@@ -69,12 +86,15 @@
         var weblabDevices = angular.module('weblabDevices', []);
         weblabDevices.controller('WebLabListCtrl', function ($scope) {
           $scope.sensors = [];
-          $scope.sensorName = "";
+          $scope.currentSensor = {};
+          $scope.currentValues = {};
           $scope.processSensor = processSensor;
 
           function processSensor(sensor) {
+                $scope.currentSensor = sensor;
+                console.log($scope.currentSensor.values);
                 $("#sensor_row").show();
-                $scope.sensorName = sensor.fullName;
+                $("#sensor_row").get(0).scrollIntoView();
                 websocket.send(JSON.stringify({
                         "method" : "getSensorData",
                         "sensorId" : sensor.sensorId,
@@ -108,6 +128,7 @@
             websocket = new WebSocket('ws://' + location.host + url_prefix + '/devices/sensors?reservation_id=' + reservation_id + "&lab_id=" + lab_id);
             websocket.onmessage = onMessage;
             $("#metadata_row").show();
+            $("#metadata_row").get(0).scrollIntoView();
         });
 
         $("#getSensorMetadata").click(function() {
@@ -130,12 +151,14 @@
                         'description' : value.description,
                         'fullName' : value.fullName,
                         'sensorNames' : name,
-                        'sensors' : value.values
+                        'sensors' : value.values,
+                        'values' : value.values
                     };
                     scope.sensors.push(obj);
                 });
             });
             $("#sensorsTable").show();
+            $("#sensorsTable").get(0).scrollIntoView();
             $("#getSensorMetadataResponse").html(JSON.stringify(response, null, 4));
             $("#getSensorMetadataResponse").show();
         }
