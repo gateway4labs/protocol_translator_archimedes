@@ -54,5 +54,5 @@ def update_status(fake = False):
         else:
             print reservation_id
             print result
-            status.notify(result, reservation_id)
+            status.notify(json.dumps(result), reservation_id)
 

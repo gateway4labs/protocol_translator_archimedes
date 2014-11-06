@@ -1,3 +1,5 @@
+import sys
+
 STATUS_COMMAND = 'ALLINFO:archimedes1:archimedes2:archimedes3:archimedes4:archimedes5:archimedes6:archimedes7'
 
 def get_sensor_metadata(reservation_id, message):
@@ -67,4 +69,37 @@ def get_sensor_metadata(reservation_id, message):
         metadata['sensors'].append(cam_metadata)
 
     return metadata
+
+import time
+import random
+
+SENSOR_MAP = {
+    'tube-1' : 'archimedes1',
+    'tube-2' : 'archimedes2',
+    'tube-3' : 'archimedes3',
+    'tube-4' : 'archimedes4',
+    'tube-5' : 'archimedes5',
+    'tube-6' : 'archimedes6',
+    'tube-7' : 'archimedes7',
+}
+
+def extract_response_data(new_data, sensor_id):
+    if sensor_id not in SENSOR_MAP:
+        print SENSOR_MAP
+        print >> sys.stderr, "sensor_id %s not found in table" % sensor_id
+        return {}
+
+    archimedes_id = SENSOR_MAP[sensor_id]
+    if archimedes_id not in new_data:
+        print new_data
+        print >> sys.stderr, "archimedes_id %s not found in data" % archimedes_id
+        return {}
+    
+    archimedes_data = new_data[archimedes_id]
+
+    return {
+        'valueNames' : ['level', 'load'],
+        'data' : [ archimedes_data['level'], archimedes_data['load'] ],
+        'lastMeasured' : [time.asctime(), time.asctime()]
+    }
 

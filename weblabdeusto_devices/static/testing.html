@@ -59,13 +59,18 @@
         <div class="row" id="sensor_row" style="display: none">
             <h2>Sensor {{ currentSensor.fullName }}</h2>
 
-             <table id="sensorsDataTable" class="table table-hover table-bordered">
+            <button class="btn btn-primary" ng-click="showSensorData()"><span class="glyphicon glyphicon-play"></span></button>
+            <button class="btn btn-danger" ng-click="stopSensorData()"><span class="glyphicon glyphicon-stop"></span></button>
+
+            <br>
+
+            <table id="sensorsDataTable" class="table table-hover table-bordered">
                 <thead>
                     <tr>
                         <th>Name</th>
                         <th>Unit</th>
                         <th>Value</th>
-                        <th>When</th>
+                        <th>Last measured</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -73,7 +78,7 @@
                         <td>{{ value.name }}</td>
                         <td>{{ value.unit }}</td>
                         <td>{{ currentValues[value.name].value || 'Not available yet' }}</td>
-                        <td>{{ currentValues[value.name].timestamp || 'Not available yet' }}</td>
+                        <td>{{ currentValues[value.name].lastMeasured || 'Not available yet' }}</td>
                     </tr>
                 </tbody>
             </table>
@@ -88,21 +93,30 @@
           $scope.sensors = [];
           $scope.currentSensor = {};
           $scope.currentValues = {};
-          $scope.processSensor = processSensor;
-
-          function processSensor(sensor) {
+          $scope.processSensor = function (sensor) {
                 $scope.currentSensor = sensor;
-                console.log($scope.currentSensor.values);
                 $("#sensor_row").show();
                 $("#sensor_row").get(0).scrollIntoView();
+          }
+
+          $scope.showSensorData = function() {
                 websocket.send(JSON.stringify({
                         "method" : "getSensorData",
-                        "sensorId" : sensor.sensorId,
+                        "sensorId" : $scope.currentSensor.sensorId,
                         "configuration" : [],
                         "accessRole" : "controller"
                     }));
           }
 
+          $scope.stopSensorData = function() {
+                websocket.send(JSON.stringify({
+                        "method" : "getSensorData",
+                        "sensorId" : $scope.currentSensor.sensorId,
+                        "configuration" : [],
+                        "updateFrequency" : 0,
+                        "accessRole" : "controller"
+                    }));
+          }
         });
 
         var websocket; 
@@ -114,6 +128,8 @@
                 alert(jsonResponse['message']);
             } else if (jsonResponse['method'] == 'getSensorMetadata') {
                 processSensorMetadata(jsonResponse);
+            } else if (jsonResponse['method'] == 'getSensorData') {
+                processSensorData(jsonResponse);
             } else {
                 alert("Invalid response: " + evt.data);
             }
@@ -121,9 +137,7 @@
         
         $("#activateWebSocket").click(function() {
             var reservation_id = $("#reservation_id_text").val();
-            console.log(reservation_id);   
             var lab_id = $("#lab_id").val();
-            console.log(lab_id);
             var url_prefix = location.pathname.split("/static")[0];
             websocket = new WebSocket('ws://' + location.host + url_prefix + '/devices/sensors?reservation_id=' + reservation_id + "&lab_id=" + lab_id);
             websocket.onmessage = onMessage;
@@ -139,7 +153,7 @@
 
         function processSensorMetadata(response) {
             var scope = angular.element($("#body")).scope();
-            scope.$apply(function(scope){
+            scope.$apply(function(scope) {
                 scope.sensors = [];
                 $(response.sensors).each(function (pos, value) {
                     var name = "";
@@ -163,6 +177,17 @@
             $("#getSensorMetadataResponse").show();
         }
 
+        function processSensorData(response) {
+            var scope = angular.element($("#body")).scope();
+            scope.$apply(function(scope) {
+                $(response.responseData.valueNames).each(function (pos, value) {
+                    var name = value;
+                    var data = response.responseData.data[pos];
+                    var lastMeasured = response.responseData.lastMeasured[pos];
+                    scope.currentValues[name] = { "value" : data, "lastMeasured" : lastMeasured };
+                });
+            });
+        }
     </script>
 </body>
 </html>

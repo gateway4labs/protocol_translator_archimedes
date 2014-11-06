@@ -1,4 +1,6 @@
 import redis
+import json
+import traceback
 
 from weblabdeusto_devices import app
 
@@ -43,9 +45,16 @@ class PubSubWrapper(object):
 
     def __iter__(self):
         for item in self.pubsub.listen():
-            if item == REMOVAL:
+            data = item['data']
+            if data == REMOVAL:
                 break
-            yield item
+            if item['type'] == 'message':
+                try:
+                    yield json.loads(data)
+                except: # Not JSON
+                    print "Trying to serialize: %r" % data
+                    traceback.print_exc()
+                    yield data
 
         self.close()
 
